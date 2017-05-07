@@ -1,2 +1,4 @@
 *.pyc
 *.hdf5
+*.ckpt
+*.meta
