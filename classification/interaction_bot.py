@@ -5,13 +5,20 @@ import logging
 
 import openimages
 
+import requests
+import datetime
+import base64
+
 
 from pymongo import MongoClient
 client = MongoClient()
 db = client.telegram
 user_database = db.users
+db2 = client.food
+food_database = db2.lookup
 
-
+WHENHUB_TOKEN = "H4s5piDr9jCiY9t4eaLgbDiUQsmzW2dLD4LzRiBBXJD8GgyaCcV2mEhCCsehKMCe"
+WHENHUB_ID = "590c18af39694901903f5306"
 TOKEN = '302383997:AAFRArU5lOXML-GfaJBVEenDjXNd11lL0Uo'
 updater = Updater(token=TOKEN)
 
@@ -22,8 +29,59 @@ user_states = {}
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 
+def create_schedule(name):
+	send_data = {# "icon": "string",
+  		"name": name + "'s nutrition timeline",
+  		"description": "Tracking food consumption",
+  		"scope": "public"}
+	url = "https://api.whenhub.com/api/users/" + WHENHUB_ID + "/schedules?access_token=" + WHENHUB_TOKEN
+	response = requests.request("POST", url, data=send_data)
+	return response.json()['id']
+
+
+def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quantity, imgurl)
+	intro_string = "Had " + str(quantity) + " of " + food
+	info_string = "Calories: %f\n Carbohydrates: %f\n Protein: %f\n Fat:%f\n" % (calories, carbohydrate, protein, fat)
+	send_data = {
+  		"when": {
+    		"period": "minute",
+    		"startDate": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    		"startTimezone": "Asia/Kolkata"
+  		},
+  		"name": intro_string,
+  		"description": info_string,
+  		# "icon": "string",
+  		"resources": [
+    		"string"
+  		],
+  		"tags": [food]
+	}
+  	url = "https://api.whenhub.com/api/schedules/ " + schedule_id + "/events?access_token=" + WHENHUB_TOKEN
+	response = requests.request("POST", url, data=send_data)
+	event_id = response.json()['id']
+	with open('temp', 'rb') as image_file:
+		send_data = {
+			"type": "image"
+  			"content": base64.b64encode(image_file.read())
+  		}
+	url = "https://api.whenhub.com/api/events/ " + event_id + "/media?access_token=" + WHENHUB_TOKEN
+	response = requests.request("POST", url, data=send_data)
+	
+
+
 def get_status_string(username, name):
-	return "wololo"
+		db.collection.update_one({"_id":"key1"}, {"$set": {"id":"key1"}}, upsert=True)
+	for z in user_database.find({"username": username}):
+		calories = quantity * z['calories']
+		carbohydrate = quantity * z['carbohydrate']
+		protein = quantity * z['protein']
+		schedule_id = z['schedule_id']
+		fat = quantity * z['fat']
+	return_string = "Hey, " + name + ". Your consumption for the day so far is: "
+	return_string += "Calories: %f, Carbohydrates: %f, Protein:  %f, Fat: %f" % (calories, carbohydrate, protein, fat)
+	whenhub_url = "https://studio.whenhub.com/schedules/" + schedule_id
+	return_string += "You may track your nutrient intake here at : %s" % (whenhub_url)
+	return return_string
 
 
 def register(bot, update):
@@ -34,7 +92,7 @@ def register(bot, update):
 		reply_string = "Oops! You're already registered with us, " + name
 	else:
 		reply_string = "Thanks for registering with us, " + name + " !"
-		user_database.insert_one({"username": username})
+		user_database.insert_one({"username": username, "schedule_id": })
 	bot.sendMessage(chat_id=update.message.chat_id, text=reply_string)
 
 
@@ -44,15 +102,23 @@ def status(bot, update):
 	if user_database.find({"username": username}).count() == 0:
 		bot.sendMessage(chat_id=update.message.chat_id, text="You need to register first via /register")
 	else:
-	bot.sendMessage(chat_id=update.message.chat_id, text=get_status_string(username, name))
+		bot.sendMessage(chat_id=update.message.chat_id, text=get_status_string(username, name))
 
 
 def echo(bot, update):
 	global user_database
 	username = update.message.from_user.username
 	if username in user_states:
-		del user_states[username]
 		quantity = int(update.message.text)
+		for z in food_database.find({"name": user_states[username]}):
+			calories = quantity * z['calories']
+			carbohydrate = quantity * z['carbohydrate']
+			protein = quantity * z['protein']
+			fat = quantity * z['fat']
+		del user_states[username]
+		for z in user_database.find({"username": username}):
+			schedule_id = z['schedule_id']
+		publish_event(schedule_id, calories, carbohydrate, protein, fat)
 		bot.sendMessage(chat_id=update.message.chat_id, text="Got it!", reply_markup={'hide_keyboard': True})
 	else:
 		if user_database.find_one({"username": username}).count() == 0:
@@ -74,7 +140,7 @@ def identify_image(bot, update):
 	else:
 		food_guessed = "apple"
 		bot.sendMessage(chat_id=update.message.chat_id, text = "How many servings of " + food_guessed +  " did you have?", reply_markup=serving_keyboard)
-		user_states[username] = 1
+		user_states[username] = food_guessed
 	# bot.sendMessage(chat_id=update.message.chat_id, text=str(result))
 
 
