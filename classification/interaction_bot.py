@@ -39,7 +39,7 @@ def create_schedule(name):
 	return response.json()['id']
 
 
-def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quantity, imgurl)
+def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quantity):
 	intro_string = "Had " + str(quantity) + " of " + food
 	info_string = "Calories: %f\n Carbohydrates: %f\n Protein: %f\n Fat:%f\n" % (calories, carbohydrate, protein, fat)
 	send_data = {
@@ -51,17 +51,15 @@ def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quant
   		"name": intro_string,
   		"description": info_string,
   		# "icon": "string",
-  		"resources": [
-    		"string"
-  		],
   		"tags": [food]
 	}
-  	url = "https://api.whenhub.com/api/schedules/ " + schedule_id + "/events?access_token=" + WHENHUB_TOKEN
+  	url = "https://api.whenhub.com/api/schedules/" + schedule_id + "/events?access_token=" + WHENHUB_TOKEN
 	response = requests.request("POST", url, data=send_data)
+	print response.json()
 	event_id = response.json()['id']
 	with open('temp', 'rb') as image_file:
 		send_data = {
-			"type": "image"
+			"type": "image",
   			"content": base64.b64encode(image_file.read())
   		}
 	url = "https://api.whenhub.com/api/events/ " + event_id + "/media?access_token=" + WHENHUB_TOKEN
@@ -70,7 +68,7 @@ def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quant
 
 
 def get_status_string(username, name):
-		db.collection.update_one({"_id":"key1"}, {"$set": {"id":"key1"}}, upsert=True)
+	# db.collection.update_one({"_id":"key1"}, {"$set": {"id":"key1"}}, upsert=True)
 	for z in user_database.find({"username": username}):
 		calories = quantity * z['calories']
 		carbohydrate = quantity * z['carbohydrate']
@@ -92,7 +90,7 @@ def register(bot, update):
 		reply_string = "Oops! You're already registered with us, " + name
 	else:
 		reply_string = "Thanks for registering with us, " + name + " !"
-		user_database.insert_one({"username": username, "schedule_id": })
+		user_database.insert_one({"username": username, "schedule_id": create_schedule(name)})
 	bot.sendMessage(chat_id=update.message.chat_id, text=reply_string)
 
 
@@ -107,19 +105,25 @@ def status(bot, update):
 
 def echo(bot, update):
 	global user_database
+	global user_states
+	print "Got message"
 	username = update.message.from_user.username
 	if username in user_states:
 		quantity = int(update.message.text)
-		for z in food_database.find({"name": user_states[username]}):
-			calories = quantity * z['calories']
-			carbohydrate = quantity * z['carbohydrate']
-			protein = quantity * z['protein']
-			fat = quantity * z['fat']
-		del user_states[username]
+		calories = 100
+		carbohydrate = 2
+		protein =0.1
+		fat = 2 
+		# for z in food_database.find({"name": user_states[username]}):
+		# 	calories = quantity * z['calories']
+		# 	carbohydrate = quantity * z['carbohydrate']
+		# 	protein = quantity * z['protein']
+		# 	fat = quantity * z['fat']
 		for z in user_database.find({"username": username}):
 			schedule_id = z['schedule_id']
-		publish_event(schedule_id, calories, carbohydrate, protein, fat)
+		publish_event(schedule_id, calories, carbohydrate, protein, fat, user_states[username], quantity)
 		bot.sendMessage(chat_id=update.message.chat_id, text="Got it!", reply_markup={'hide_keyboard': True})
+		del user_states[username]
 	else:
 		if user_database.find_one({"username": username}).count() == 0:
 			bot.sendMessage(chat_id=update.message.chat_id, text="You need to register first via /register")
@@ -128,6 +132,7 @@ def echo(bot, update):
 
 
 def identify_image(bot, update):
+	global user_states
 	username = update.message.from_user.username
 	name = update.message.from_user.first_name
 	file_id = update.message.photo[-1].file_id
@@ -141,6 +146,7 @@ def identify_image(bot, update):
 		food_guessed = "apple"
 		bot.sendMessage(chat_id=update.message.chat_id, text = "How many servings of " + food_guessed +  " did you have?", reply_markup=serving_keyboard)
 		user_states[username] = food_guessed
+		print "Set user state to ", food_guessed
 	# bot.sendMessage(chat_id=update.message.chat_id, text=str(result))
 
 
@@ -150,8 +156,8 @@ dispatcher.add_handler(start_handler)
 start_handler = CommandHandler('status', status)
 dispatcher.add_handler(start_handler)
 
-# echo_handler = MessageHandler(Filters.text, echo)
-# dispatcher.add_handler(echo_handler)
+echo_handler = MessageHandler(Filters.text, echo)
+dispatcher.add_handler(echo_handler)
 
 image_handler = MessageHandler(Filters.photo, identify_image)
 dispatcher.add_handler(image_handler)
