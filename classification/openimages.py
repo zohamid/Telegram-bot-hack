@@ -35,8 +35,8 @@ def PreprocessImage(image, central_fraction=0.875):
   image = tf.image.resize_bilinear(image,
                                  [299, 299],
                                  align_corners=False)
-  image = tf.mul(image, 1.0/127.5)
-  return tf.sub(image, 1.0)
+  image = tf.multiply(image, 1.0/127.5)
+  return tf.subtract(image, 1.0)
 
 
 def LoadLabelMaps(num_classes, labelmap_path, dict_path):
@@ -56,14 +56,14 @@ def predict_on_image(image_path):
   global input_image
   img_data = tf.gfile.FastGFile(image_path).read()
   predictions_eval = np.squeeze(sess.run(predictions, {input_image: img_data}))
-  top_k = predictions_eval.argsort()[-5:][::-1]
+  top_k = predictions_eval.argsort()[-20:][::-1]
   results = []
   for idx in top_k:
     mid = labelmap[idx]
     display_name = label_dict.get(mid, 'unknown')
     score = predictions_eval[idx]
-    if display_name in food_list:
-    	results.append([display_name, str(score)])
+    # if display_name in food_list:
+    results.append([display_name, str(score)])
   return results
 
 
