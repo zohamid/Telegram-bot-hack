@@ -50,7 +50,7 @@ def create_schedule(name):
 
 def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quantity, image_url):
 	intro_string = "Had " + str(quantity) + " servings of " + food
-	info_string = "Calories: %f Kcal\n Carbohydrates: %f g\n Protein: %f g\n Fat: %f g\n" % (calories, carbohydrate, protein, fat)
+	info_string = "Calories: %f Kcal; Carbohydrates: %f g; Protein: %f g;  Fat: %f g" % (calories, carbohydrate, protein, fat)
 	send_data = {
   		"when": {
     		"period": "minute",
@@ -118,8 +118,8 @@ def echo(bot, update):
 		carbohydrate = 3
 		protein = 1
 		fat = 0.4
-		for z in food_database.find({"name": user_states[username]}):
-		 	calories = quantity * flaot(z['calories'])
+		for z in food_database.find({"name": user_states[username][0]}):
+		 	calories = quantity * float(z['calories'])
 		 	carbohydrate = quantity * float(z['carbohydrate'])
 		 	protein = quantity * float(z['protein'])
 		 	fat = quantity * float(z['fat'])
