@@ -54,6 +54,7 @@ def predict_on_image(image_path):
   global label_dict
   global sess
   global input_image
+  global food_list
   img_data = tf.gfile.FastGFile(image_path).read()
   predictions_eval = np.squeeze(sess.run(predictions, {input_image: img_data}))
   top_k = predictions_eval.argsort()[-20:][::-1]
@@ -62,9 +63,9 @@ def predict_on_image(image_path):
     mid = labelmap[idx]
     display_name = label_dict.get(mid, 'unknown')
     score = predictions_eval[idx]
-    # if display_name in food_list:
-    results = display_name
-    break
+    if display_name in food_list:
+    	results = display_name
+    	break
   return results
 
 
@@ -77,7 +78,7 @@ def prep_graph():
   global food_list
   food_list = []
   with open(food_names) as f:
-  	for x in f.read():
+  	for x in f:
   		food_list.append(x.rstrip())
   g = tf.Graph()
   with g.as_default():
