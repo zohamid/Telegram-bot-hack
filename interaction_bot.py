@@ -10,7 +10,6 @@ import datetime
 import base64
 import json
 
-
 from pymongo import MongoClient
 client = MongoClient()
 db = client.telegram
@@ -18,9 +17,9 @@ user_database = db.users
 db2 = client.food
 food_database = db2.lookup
 
-WHENHUB_TOKEN = "H4s5piDr9jCiY9t4eaLgbDiUQsmzW2dLD4LzRiBBXJD8GgyaCcV2mEhCCsehKMCe"
-WHENHUB_ID = "590c18af39694901903f5306"
-TOKEN = '302383997:AAFRArU5lOXML-GfaJBVEenDjXNd11lL0Uo'
+WHENHUB_TOKEN = "<WHENHUB_ACCESS_TOKEN>"
+WHENHUB_ID = "<WHENHUB_ADMIN_USERID>"
+TOKEN = <"TELEGRAM_BOT_ACCESS_TOKEN>"
 updater = Updater(token=TOKEN)
 
 dispatcher = updater.dispatcher
