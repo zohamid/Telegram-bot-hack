@@ -3,11 +3,12 @@ from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler, Filters
 import logging
 
-import openimages
+from classification import openimages
 
 import requests
 import datetime
 import base64
+import json
 
 
 from pymongo import MongoClient
@@ -35,13 +36,25 @@ def create_schedule(name):
   		"description": "Tracking food consumption",
   		"scope": "public"}
 	url = "https://api.whenhub.com/api/users/" + WHENHUB_ID + "/schedules?access_token=" + WHENHUB_TOKEN
-	response = requests.request("POST", url, data=send_data)
-	return response.json()['id']
+	response = requests.request("POST", url, data=send_data, headers={'Content-type': 'application/json'})
+	schedule_id = response.json()['id']
+	url = "https://api.whenhub.com/api/schedules/" + schedule_id + "/whencasts?access_token=" + WHENHUB_TOKEN
+	# send_data = {
+ #  		"name": "string",
+ #  		"version": "string",
+ #  		"theme": "string",
+ #  		"defaultWhencast": true
+ #  		"publisher": {},
+ #  		"settings": {},
+ #  		"generalSettings": {}
+	# }
+	# response = requests.request("POST", url, data=send_data, headers={'Content-type': 'application/json'})
+	return schedule_id
 
 
-def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quantity):
-	intro_string = "Had " + str(quantity) + " of " + food
-	info_string = "Calories: %f\n Carbohydrates: %f\n Protein: %f\n Fat:%f\n" % (calories, carbohydrate, protein, fat)
+def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quantity, image_url):
+	intro_string = "Had " + str(quantity) + " servings of " + food
+	info_string = "Calories: %f\n Carbohydrates: %f\n Protein: %f\n Fat: %f\n" % (calories, carbohydrate, protein, fat)
 	send_data = {
   		"when": {
     		"period": "minute",
@@ -54,29 +67,27 @@ def publish_event(schedule_id, calories, carbohydrate, protein, fat, food, quant
   		"tags": [food]
 	}
   	url = "https://api.whenhub.com/api/schedules/" + schedule_id + "/events?access_token=" + WHENHUB_TOKEN
-	response = requests.request("POST", url, data=send_data)
+	response = requests.request("POST", url, data=json.dumps(send_data), headers={'Content-type': 'application/json'})
+	print url
+	print send_data
 	print response.json()
 	event_id = response.json()['id']
-	with open('temp', 'rb') as image_file:
-		send_data = {
-			"type": "image",
-  			"content": base64.b64encode(image_file.read())
-  		}
-	url = "https://api.whenhub.com/api/events/ " + event_id + "/media?access_token=" + WHENHUB_TOKEN
+	send_data = {
+		"type": "image",
+  		"url": image_url
+  	}
+	url = "https://api.whenhub.com/api/events/" + event_id + "/media?access_token=" + WHENHUB_TOKEN
 	response = requests.request("POST", url, data=send_data)
-	
+	print url
+	print send_data
+	print response
 
 
 def get_status_string(username, name):
 	# db.collection.update_one({"_id":"key1"}, {"$set": {"id":"key1"}}, upsert=True)
 	for z in user_database.find({"username": username}):
-		calories = quantity * z['calories']
-		carbohydrate = quantity * z['carbohydrate']
-		protein = quantity * z['protein']
 		schedule_id = z['schedule_id']
-		fat = quantity * z['fat']
-	return_string = "Hey, " + name + ". Your consumption for the day so far is: "
-	return_string += "Calories: %f, Carbohydrates: %f, Protein:  %f, Fat: %f" % (calories, carbohydrate, protein, fat)
+	return_string = "Hey, " + name + "! "
 	whenhub_url = "https://studio.whenhub.com/schedules/" + schedule_id
 	return_string += "You may track your nutrient intake here at : %s" % (whenhub_url)
 	return return_string
@@ -121,7 +132,7 @@ def echo(bot, update):
 		# 	fat = quantity * z['fat']
 		for z in user_database.find({"username": username}):
 			schedule_id = z['schedule_id']
-		publish_event(schedule_id, calories, carbohydrate, protein, fat, user_states[username], quantity)
+		publish_event(schedule_id, calories, carbohydrate, protein, fat, user_states[username][0], quantity, user_states[username][1])
 		bot.sendMessage(chat_id=update.message.chat_id, text="Got it!", reply_markup={'hide_keyboard': True})
 		del user_states[username]
 	else:
@@ -137,17 +148,17 @@ def identify_image(bot, update):
 	name = update.message.from_user.first_name
 	file_id = update.message.photo[-1].file_id
 	file = bot.getFile(file_id)
+	image_url = file.file_path
 	extension = file.file_path.split('.')[-1]
 	file.download('temp')
 	result = openimages.predict_on_image('temp')
 	if result is None:
 		bot.sendMessage(chat_id=update.message.chat_id, text="Oops! That's probably not an edible item (or at least that's what I think :P ). Click another pic, if it is?")	
 	else:
-		food_guessed = "apple"
+		food_guessed = str(result)
 		bot.sendMessage(chat_id=update.message.chat_id, text = "How many servings of " + food_guessed +  " did you have?", reply_markup=serving_keyboard)
-		user_states[username] = food_guessed
-		print "Set user state to ", food_guessed
-	# bot.sendMessage(chat_id=update.message.chat_id, text=str(result))
+		user_states[username] = [food_guessed, image_url]
+		# print "Set user state to ", food_guessed[0]
 
 
 start_handler = CommandHandler('register', register)

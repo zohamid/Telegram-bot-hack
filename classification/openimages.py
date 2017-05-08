@@ -16,10 +16,10 @@ from tensorflow.python.training import saver as tf_saver
 from tensorflow.python.training import supervisor
 
 slim = tf.contrib.slim
-checkpoint = 'models/model.ckpt'
-label_dict_file = "models/dict.csv"
-labelmap_file = 'models/labelmap.txt'
-food_names = 'models/openimages_food.txt'
+checkpoint = 'classification/models/model.ckpt'
+label_dict_file = "classification/models/dict.csv"
+labelmap_file = 'classification/models/labelmap.txt'
+food_names = 'classification/models/openimages_food.txt'
 predictions = None
 labelmap = None
 label_dict = None
@@ -57,13 +57,14 @@ def predict_on_image(image_path):
   img_data = tf.gfile.FastGFile(image_path).read()
   predictions_eval = np.squeeze(sess.run(predictions, {input_image: img_data}))
   top_k = predictions_eval.argsort()[-20:][::-1]
-  results = []
+  results = None
   for idx in top_k:
     mid = labelmap[idx]
     display_name = label_dict.get(mid, 'unknown')
     score = predictions_eval[idx]
     # if display_name in food_list:
-    results.append([display_name, str(score)])
+    results = display_name
+    break
   return results
 
 
