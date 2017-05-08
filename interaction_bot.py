@@ -19,7 +19,7 @@ food_database = db2.lookup
 
 WHENHUB_TOKEN = "<WHENHUB_ACCESS_TOKEN>"
 WHENHUB_ID = "<WHENHUB_ADMIN_USERID>"
-TOKEN = <"TELEGRAM_BOT_ACCESS_TOKEN>"
+TOKEN = "<TELEGRAM_BOT_ACCESS_TOKEN>"
 updater = Updater(token=TOKEN)
 
 dispatcher = updater.dispatcher
